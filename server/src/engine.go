@@ -59,15 +59,17 @@ func (g *Game) Update() error {
 	// 根据网络消息更新位置
 	for _, c := range g.clients {
 		msg := c.GetMessage()
+		// 预测及对账只对本玩家生效
 		if c.player.Id == g.mainPlayer {
 			// 不开启预测，直接采用服务端位置
 			if !c.forecast {
 				if msg != nil {
 					c.player.Pos = msg.Pos
+					c.player.Target = msg.Target
 				}
 				continue
 			}
-			// 开启预测，但未开启对账
+			// 开启预测但未开启对账, 会强制同步服务端
 			if c.forecast && !c.reconciliation {
 				if msg != nil {
 					c.player.Target = msg.Target
@@ -110,11 +112,7 @@ func (g *Game) Update() error {
 			}
 		}
 	}
-	return nil
-}
 
-func (g *Game) Draw(screen *ebiten.Image) {
-	op := &ebiten.DrawImageOptions{}
 	// 发送控制信息
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
@@ -128,6 +126,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			c.Move(target)
 		}
 	}
+	return nil
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+	op := &ebiten.DrawImageOptions{}
 	// 渲染
 	for _, c := range g.clients {
 		p := c.player
