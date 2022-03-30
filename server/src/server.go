@@ -1,4 +1,4 @@
-package main
+package src
 
 import (
 	"fmt"
@@ -36,6 +36,7 @@ func (s *Server) GetMessage() {
 func (s *Server) sendToClient(c *Client, msg *ControlMsg) {
 	go func() {
 		time.Sleep(lag)
+		SendToNetwork(*msg)
 		c.playerChan <- msg
 	}()
 }
@@ -58,68 +59,68 @@ func (s *Server) Run() {
 func (s *Server) process() {
 	s.GetMessage()
 	for _, msg := range s.Msg {
-		c, ok := s.Clients[msg.id]
+		c, ok := s.Clients[msg.Id]
 		if !ok {
 			continue
 		}
 		p := c.player
-		p.target = msg.target
-		disX := p.target.X - p.pos.X
-		disY := p.target.Y - p.pos.Y
+		p.Target = msg.Target
+		disX := p.Target.X - p.Pos.X
+		disY := p.Target.Y - p.Pos.Y
 		total := math.Sqrt(math.Pow(disX, 2) + math.Pow(disY, 2))
-		speed := 1 / float64(s.Frame) * p.speed
+		speed := 1 / float64(s.Frame) * p.Speed
 		per := speed / total
 		if per > 1.0 {
 			per = 1.0
 		}
 		speedX := per * disX
 		speedY := per * disY
-		p.destination.X = speedX
-		p.destination.Y = speedY
-		p.status = MOVING
-		s.MsgBuffer[p.id] = *msg
+		p.Destination.X = speedX
+		p.Destination.Y = speedY
+		p.Status = MOVING
+		s.MsgBuffer[p.Id] = *msg
 	}
 
 	for _, c := range s.Clients {
 		p := c.player
-		if p.status == STOP {
+		if p.Status == STOP {
 			continue
 		}
-		p.pos.X += p.destination.X
-		p.pos.Y += p.destination.Y
+		p.Pos.X += p.Destination.X
+		p.Pos.Y += p.Destination.Y
 
 		// 会有误差
-		nextX := p.pos.X + p.destination.X
-		targetX := p.target.X - p.pos.X
-		nextTargetX := p.target.X - nextX
-		nextY := p.pos.Y + p.destination.Y
-		targetY := p.target.Y - p.pos.Y
-		nextTargetY := p.target.Y - nextY
+		nextX := p.Pos.X + p.Destination.X
+		targetX := p.Target.X - p.Pos.X
+		nextTargetX := p.Target.X - nextX
+		nextY := p.Pos.Y + p.Destination.Y
+		targetY := p.Target.Y - p.Pos.Y
+		nextTargetY := p.Target.Y - nextY
 		if targetX == 0 && targetY == 0 {
-			p.pos.X = p.target.X
-			p.pos.Y = p.target.Y
-			p.status = STOP
+			p.Pos.X = p.Target.X
+			p.Pos.Y = p.Target.Y
+			p.Status = STOP
 		}
 		if (targetX > 0 && nextTargetX < 0) || (targetX < 0 && nextTargetX > 0) {
-			p.pos.X = p.target.X
-			p.pos.Y = p.target.Y
-			p.status = STOP
+			p.Pos.X = p.Target.X
+			p.Pos.Y = p.Target.Y
+			p.Status = STOP
 		}
 		if (targetY > 0 && nextTargetY < 0) || (targetY < 0 && nextTargetY > 0) {
-			p.pos.X = p.target.X
-			p.pos.Y = p.target.Y
-			p.status = STOP
+			p.Pos.X = p.Target.X
+			p.Pos.Y = p.Target.Y
+			p.Status = STOP
 		}
 		msg := &ControlMsg{
-			id:     p.id,
-			pos:    p.pos,
-			target: p.target,
+			Id:     p.Id,
+			Pos:    p.Pos,
+			Target: p.Target,
 		}
 		// 移动完毕，对账
-		if p.status == STOP {
-			if buf, ok := s.MsgBuffer[p.id]; ok {
-				msg.index = buf.index
-				delete(s.MsgBuffer, p.id)
+		if p.Status == STOP {
+			if buf, ok := s.MsgBuffer[p.Id]; ok {
+				msg.Index = buf.Index
+				delete(s.MsgBuffer, p.Id)
 			}
 		}
 		s.sendToClient(c, msg)

@@ -3,14 +3,18 @@ package main
 import (
 	"log"
 
+	"server/src"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 func main() {
-	svr := NewServer(10)
-	client := NewClient()
+	src.Listen()
+
+	svr := src.NewServer(10)
+	client := src.NewClient()
 	p1 := client.NewPlayer()
-	g := NewGameEngine(p1.id)
+	g := src.NewGameEngine(p1.Id)
 	g.AddClient(client)
 	client.Connect(svr)
 	svr.Run()

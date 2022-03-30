@@ -1,4 +1,4 @@
-package main
+package src
 
 import (
 	"fmt"
@@ -45,8 +45,8 @@ func (g *Game) AddClient(c *Client) {
 		log.Fatal(err)
 	}
 	eimg := ebiten.NewImageFromImage(img)
-	c.player.image = eimg
-	g.clients[c.player.id] = c.DeepCopyClient(c)
+	c.player.Image = eimg
+	g.clients[c.player.Id] = c.DeepCopyClient(c)
 }
 
 func (g *Game) Update() error {
@@ -56,40 +56,40 @@ func (g *Game) Update() error {
 		// 不开启预测，直接采用服务端位置
 		if !c.forecast {
 			if msg != nil {
-				c.player.pos = msg.pos
+				c.player.Pos = msg.Pos
 			}
 			continue
 		}
 		// 开启预测，但未开启对账
 		if c.forecast && !c.reconciliation {
 			if msg != nil {
-				c.player.target = msg.target
-				c.player.pos = msg.pos
+				c.player.Target = msg.Target
+				c.player.Pos = msg.Pos
 			}
 			res := ProcessOne(c.player, 60)
-			c.player.pos = res.pos
+			c.player.Pos = res.Pos
 		}
 		// 预测及对账
 		if c.forecast && c.reconciliation {
-			if msg != nil && msg.index != 0 {
-				buf, ok := c.ControlBuffer[msg.index]
+			if msg != nil && msg.Index != 0 {
+				buf, ok := c.ControlBuffer[msg.Index]
 				if ok {
 					// 对账失败，强制同步位置
-					if !(buf.target == msg.pos) {
-						c.player.pos = msg.pos
+					if !(buf.Target == msg.Pos) {
+						c.player.Pos = msg.Pos
 						c.ControlBuffer = map[int]ControlMsg{}
 						continue
 					}
 					// 删除缓存
-					delete(c.ControlBuffer, msg.index)
+					delete(c.ControlBuffer, msg.Index)
 				}
 				// 缓存不存在，对账失败，强制同步位置
 				if !ok {
-					c.player.pos = msg.pos
+					c.player.Pos = msg.Pos
 				}
 			}
 			res := ProcessOne(c.player, 60)
-			c.player.pos = res.pos
+			c.player.Pos = res.Pos
 		}
 	}
 	return nil
@@ -103,19 +103,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		c, ok := g.clients[g.mainPlayer]
 		if ok {
 			p := c.player
-			target := p.pos
+			target := p.Pos
 			target.X = float64(x)
 			target.Y = float64(y)
-			p.target = target
+			p.Target = target
 			c.Move(target)
 		}
 	}
 	// 渲染
 	for _, c := range g.clients {
 		p := c.player
-		sizeX, sizeY := p.image.Size()
-		op.GeoM.Translate(p.pos.X-float64(sizeX/2), p.pos.Y-float64(sizeY/2))
-		screen.DrawImage(p.image, op)
+		sizeX, sizeY := p.Image.Size()
+		op.GeoM.Translate(p.Pos.X-float64(sizeX/2), p.Pos.Y-float64(sizeY/2))
+		screen.DrawImage(p.Image, op)
 	}
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("Hello,ebiten!\nTPS: %0.2f\nFPS: %0.2f", ebiten.CurrentTPS(), ebiten.CurrentFPS()))
 }

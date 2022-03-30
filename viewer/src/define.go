@@ -1,19 +1,20 @@
-package main
+package src
 
 import (
-	"time"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var lag = time.Millisecond * 200
-
 type Vec struct {
-	X float64
-	Y float64
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 type Status int
+
+var msg = make([]*ControlMsg, 0)
+var lock = &sync.Mutex{}
 
 const (
 	STOP   = Status(0)
@@ -28,21 +29,11 @@ type Player struct {
 	destination Vec // 速度分量
 	target      Vec // 目的位置
 	image       *ebiten.Image
-	client      *Client
 }
 
 type ControlMsg struct {
-	id     string
-	pos    Vec
-	target Vec
-	index  int
-}
-
-var serverChan = make(chan *ControlMsg, 100)
-
-func (p *Player) sendToServer(msg *ControlMsg) {
-	go func() {
-		time.Sleep(lag)
-		serverChan <- msg
-	}()
+	Id     string `json:"id"`
+	Pos    Vec    `json:"pos"`
+	Target Vec    `json:"target"`
+	Index  int    `json:"index"`
 }

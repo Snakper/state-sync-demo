@@ -1,6 +1,8 @@
-package main
+package src
 
-import "math"
+import (
+	"math"
+)
 
 type Client struct {
 	player         *Player
@@ -22,13 +24,13 @@ func NewClient() *Client {
 
 func (c *Client) NewPlayer() *Player {
 	p := &Player{
-		id:          "player1",
-		speed:       150,
-		pos:         Vec{0, 0},
-		status:      STOP,
-		destination: Vec{0, 0},
-		target:      Vec{0, 0},
-		client:      c,
+		Id:          "player1",
+		Speed:       150,
+		Pos:         Vec{0, 0},
+		Status:      STOP,
+		Destination: Vec{0, 0},
+		Target:      Vec{0, 0},
+		Client:      c,
 	}
 	c.player = p
 	return p
@@ -36,14 +38,14 @@ func (c *Client) NewPlayer() *Player {
 
 func (c *Client) DeepCopyPlayer(p *Player) *Player {
 	newP := &Player{
-		id:          p.id,
-		speed:       p.speed,
-		pos:         p.pos,
-		status:      p.status,
-		destination: p.destination,
-		target:      p.target,
-		image:       p.image,
-		client:      p.client,
+		Id:          p.Id,
+		Speed:       p.Speed,
+		Pos:         p.Pos,
+		Status:      p.Status,
+		Destination: p.Destination,
+		Target:      p.Target,
+		Image:       p.Image,
+		Client:      p.Client,
 	}
 	return newP
 }
@@ -79,14 +81,14 @@ func (c *Client) SetReconciliation(open bool) {
 }
 
 func (c *Client) Connect(s *Server) {
-	s.Clients[c.player.id] = c.DeepCopyClient(c)
+	s.Clients[c.player.Id] = c.DeepCopyClient(c)
 }
 
 func (c *Client) Move(target Vec) {
 	msg := &ControlMsg{
-		id:     c.player.id,
-		target: target,
-		index:  c.index,
+		Id:     c.player.Id,
+		Target: target,
+		Index:  c.index,
 	}
 	c.ControlBuffer[c.index] = *msg
 	if c.index > 100000 {
@@ -97,48 +99,48 @@ func (c *Client) Move(target Vec) {
 }
 
 func ProcessOne(p *Player, frame float64) *ControlMsg {
-	disX := p.target.X - p.pos.X
-	disY := p.target.Y - p.pos.Y
+	disX := p.Target.X - p.Pos.X
+	disY := p.Target.Y - p.Pos.Y
 	total := math.Sqrt(math.Pow(disX, 2) + math.Pow(disY, 2))
-	speed := 1 / frame * p.speed
+	speed := 1 / frame * p.Speed
 	per := speed / total
 	if per > 1.0 {
 		per = 1.0
 	}
 	speedX := per * disX
 	speedY := per * disY
-	p.destination.X = speedX
-	p.destination.Y = speedY
-	p.status = MOVING
+	p.Destination.X = speedX
+	p.Destination.Y = speedY
+	p.Status = MOVING
 
-	p.pos.X += p.destination.X
-	p.pos.Y += p.destination.Y
+	p.Pos.X += p.Destination.X
+	p.Pos.Y += p.Destination.Y
 	// 会有误差
-	nextX := p.pos.X + p.destination.X
-	targetX := p.target.X - p.pos.X
-	nextTargetX := p.target.X - nextX
-	nextY := p.pos.Y + p.destination.Y
-	targetY := p.target.Y - p.pos.Y
-	nextTargetY := p.target.Y - nextY
+	nextX := p.Pos.X + p.Destination.X
+	targetX := p.Target.X - p.Pos.X
+	nextTargetX := p.Target.X - nextX
+	nextY := p.Pos.Y + p.Destination.Y
+	targetY := p.Target.Y - p.Pos.Y
+	nextTargetY := p.Target.Y - nextY
 	if targetX == 0 && targetY == 0 {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
+		p.Pos.X = p.Target.X
+		p.Pos.Y = p.Target.Y
+		p.Status = STOP
 	}
 	if (targetX > 0 && nextTargetX < 0) || (targetX < 0 && nextTargetX > 0) {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
+		p.Pos.X = p.Target.X
+		p.Pos.Y = p.Target.Y
+		p.Status = STOP
 	}
 	if (targetY > 0 && nextTargetY < 0) || (targetY < 0 && nextTargetY > 0) {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
+		p.Pos.X = p.Target.X
+		p.Pos.Y = p.Target.Y
+		p.Status = STOP
 	}
 	res := &ControlMsg{
-		id:     p.id,
-		pos:    p.pos,
-		target: p.target,
+		Id:     p.Id,
+		Pos:    p.Pos,
+		Target: p.Target,
 	}
 	return res
 }
