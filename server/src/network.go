@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-var c *net.Conn
+var c = make([]*net.Conn, 0)
 
 func Listen() {
 	go func() {
@@ -18,7 +18,7 @@ func Listen() {
 			if err != nil {
 				panic(err)
 			}
-			c = &conn
+			c = append(c, &conn)
 		}
 	}()
 }
@@ -28,10 +28,12 @@ func SendToNetwork(msg ControlMsg) {
 	if err != nil {
 		panic(err)
 	}
-	if c != nil {
-		_, err = (*c).Write(b)
-		if err != nil {
-			panic(err)
+	for _, cn := range c {
+		if cn != nil {
+			_, err = (*cn).Write(b)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }

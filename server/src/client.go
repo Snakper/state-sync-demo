@@ -9,6 +9,7 @@ type Client struct {
 	playerChan     chan *ControlMsg
 	forecast       bool
 	reconciliation bool
+	interpolation  bool
 	ControlBuffer  map[int]ControlMsg
 	index          int
 }
@@ -78,6 +79,10 @@ func (c *Client) SetForecast(open bool) {
 
 func (c *Client) SetReconciliation(open bool) {
 	c.reconciliation = open
+}
+
+func (c *Client) SetInterpolation(open bool) {
+	c.interpolation = open
 }
 
 func (c *Client) Connect(s *Server) {

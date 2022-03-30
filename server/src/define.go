@@ -6,7 +6,11 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var lag = time.Millisecond * 200
+var (
+	lag         = time.Millisecond * 200
+	ClientFrame = float64(60)
+	ServerFrame = float64(10)
+)
 
 type Vec struct {
 	X float64 `json:"x"`

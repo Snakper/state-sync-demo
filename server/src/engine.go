@@ -35,6 +35,12 @@ func (g *Game) OpenReconciliation() {
 	}
 }
 
+func (g *Game) OpenInterpolation() {
+	for _, c := range g.clients {
+		c.SetInterpolation(true)
+	}
+}
+
 func (g *Game) AddClient(c *Client) {
 	f, err := os.Open("img.png")
 	if err != nil {
@@ -53,43 +59,55 @@ func (g *Game) Update() error {
 	// 根据网络消息更新位置
 	for _, c := range g.clients {
 		msg := c.GetMessage()
-		// 不开启预测，直接采用服务端位置
-		if !c.forecast {
-			if msg != nil {
-				c.player.Pos = msg.Pos
-			}
-			continue
-		}
-		// 开启预测，但未开启对账
-		if c.forecast && !c.reconciliation {
-			if msg != nil {
-				c.player.Target = msg.Target
-				c.player.Pos = msg.Pos
-			}
-			res := ProcessOne(c.player, 60)
-			c.player.Pos = res.Pos
-		}
-		// 预测及对账
-		if c.forecast && c.reconciliation {
-			if msg != nil && msg.Index != 0 {
-				buf, ok := c.ControlBuffer[msg.Index]
-				if ok {
-					// 对账失败，强制同步位置
-					if !(buf.Target == msg.Pos) {
-						c.player.Pos = msg.Pos
-						c.ControlBuffer = map[int]ControlMsg{}
-						continue
-					}
-					// 删除缓存
-					delete(c.ControlBuffer, msg.Index)
+		if c.player.Id == g.mainPlayer {
+			// 不开启预测，直接采用服务端位置
+			if !c.forecast {
+				if msg != nil {
+					c.player.Pos = msg.Pos
 				}
-				// 缓存不存在，对账失败，强制同步位置
-				if !ok {
+				continue
+			}
+			// 开启预测，但未开启对账
+			if c.forecast && !c.reconciliation {
+				if msg != nil {
+					c.player.Target = msg.Target
+					c.player.Pos = msg.Pos
+				}
+				res := ProcessOne(c.player, ClientFrame)
+				c.player.Pos = res.Pos
+			}
+			// 预测及对账
+			if c.forecast && c.reconciliation {
+				if msg != nil && msg.Index != 0 {
+					buf, ok := c.ControlBuffer[msg.Index]
+					if ok {
+						// 对账失败，强制同步位置
+						if !(buf.Target == msg.Target) {
+							c.player.Pos = msg.Pos
+							c.player.Target = msg.Target
+							c.ControlBuffer = map[int]ControlMsg{}
+							continue
+						}
+						// 删除缓存
+						delete(c.ControlBuffer, msg.Index)
+					}
+					// 缓存不存在，对账失败，强制同步位置
+					if !ok {
+						c.player.Pos = msg.Pos
+					}
+				}
+				res := ProcessOne(c.player, ClientFrame)
+				c.player.Pos = res.Pos
+			}
+		} else {
+			// 插值
+			if c.interpolation {
+				ProcessOne(c.player, ClientFrame)
+			} else {
+				if msg != nil {
 					c.player.Pos = msg.Pos
 				}
 			}
-			res := ProcessOne(c.player, 60)
-			c.player.Pos = res.Pos
 		}
 	}
 	return nil

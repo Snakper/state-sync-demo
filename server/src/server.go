@@ -7,18 +7,14 @@ import (
 )
 
 type Server struct {
-	Msg       []*ControlMsg
-	Frame     float64
-	Clients   map[string]*Client
-	MsgBuffer map[string]ControlMsg
+	Msg     []*ControlMsg
+	Clients map[string]*Client
 }
 
-func NewServer(frame float64) *Server {
+func NewServer() *Server {
 	return &Server{
-		Msg:       []*ControlMsg{},
-		Frame:     frame,
-		Clients:   map[string]*Client{},
-		MsgBuffer: map[string]ControlMsg{},
+		Msg:     []*ControlMsg{},
+		Clients: map[string]*Client{},
 	}
 }
 
@@ -43,7 +39,7 @@ func (s *Server) sendToClient(c *Client, msg *ControlMsg) {
 
 func (s *Server) Run() {
 	go func() {
-		hz := time.Duration(1000 / s.Frame)
+		hz := time.Duration(1000 / ServerFrame)
 		timer := time.NewTimer(time.Millisecond * hz)
 		for {
 			select {
@@ -58,6 +54,7 @@ func (s *Server) Run() {
 
 func (s *Server) process() {
 	s.GetMessage()
+	clientMsg := map[string]*ControlMsg{} // 控制帧校验
 	for _, msg := range s.Msg {
 		c, ok := s.Clients[msg.Id]
 		if !ok {
@@ -68,7 +65,7 @@ func (s *Server) process() {
 		disX := p.Target.X - p.Pos.X
 		disY := p.Target.Y - p.Pos.Y
 		total := math.Sqrt(math.Pow(disX, 2) + math.Pow(disY, 2))
-		speed := 1 / float64(s.Frame) * p.Speed
+		speed := 1 / float64(ServerFrame) * p.Speed
 		per := speed / total
 		if per > 1.0 {
 			per = 1.0
@@ -78,7 +75,9 @@ func (s *Server) process() {
 		p.Destination.X = speedX
 		p.Destination.Y = speedY
 		p.Status = MOVING
-		s.MsgBuffer[p.Id] = *msg
+		if msg.Index != 0 {
+			clientMsg[p.Id] = msg
+		}
 	}
 
 	for _, c := range s.Clients {
@@ -116,12 +115,9 @@ func (s *Server) process() {
 			Pos:    p.Pos,
 			Target: p.Target,
 		}
-		// 移动完毕，对账
-		if p.Status == STOP {
-			if buf, ok := s.MsgBuffer[p.Id]; ok {
-				msg.Index = buf.Index
-				delete(s.MsgBuffer, p.Id)
-			}
+		// 对账
+		if buf, ok := clientMsg[p.Id]; ok {
+			msg.Index = buf.Index
 		}
 		s.sendToClient(c, msg)
 		fmt.Println("Server Player Move:", msg)
