@@ -6,6 +6,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var lag = time.Millisecond * 200
+
 type Vec struct {
 	X float64
 	Y float64
@@ -33,11 +35,10 @@ type ControlMsg struct {
 	id     string
 	pos    Vec
 	target Vec
+	index  int
 }
 
 var serverChan = make(chan *ControlMsg, 100)
-
-var lag = time.Millisecond * 1
 
 func (p *Player) sendToServer(msg *ControlMsg) {
 	go func() {

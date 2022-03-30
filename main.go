@@ -16,7 +16,9 @@ func main() {
 	svr.Run()
 
 	// 客户端预测
-	client.SetForecast(false)
+	g.OpenForecast()
+	// 客户端、服务端对账
+	g.OpenReconciliation()
 
 	// 游戏引擎
 	ebiten.SetWindowSize(1280, 720)        //窗口大小

@@ -7,16 +7,18 @@ import (
 )
 
 type Server struct {
-	Msg     []*ControlMsg
-	Frame   float64
-	Clients map[string]*Client
+	Msg       []*ControlMsg
+	Frame     float64
+	Clients   map[string]*Client
+	MsgBuffer map[string]ControlMsg
 }
 
 func NewServer(frame float64) *Server {
 	return &Server{
-		Msg:     []*ControlMsg{},
-		Frame:   frame,
-		Clients: map[string]*Client{},
+		Msg:       []*ControlMsg{},
+		Frame:     frame,
+		Clients:   map[string]*Client{},
+		MsgBuffer: map[string]ControlMsg{},
 	}
 }
 
@@ -75,9 +77,9 @@ func (s *Server) process() {
 		p.destination.X = speedX
 		p.destination.Y = speedY
 		p.status = MOVING
+		s.MsgBuffer[p.id] = *msg
 	}
 
-	s.Msg = s.Msg[:0]
 	for _, c := range s.Clients {
 		p := c.player
 		if p.status == STOP {
@@ -113,58 +115,16 @@ func (s *Server) process() {
 			pos:    p.pos,
 			target: p.target,
 		}
+		// 移动完毕，对账
+		if p.status == STOP {
+			if buf, ok := s.MsgBuffer[p.id]; ok {
+				msg.index = buf.index
+				delete(s.MsgBuffer, p.id)
+			}
+		}
 		s.sendToClient(c, msg)
 		fmt.Println("Server Player Move:", msg)
 	}
-}
 
-func ProcessOne(msg *ControlMsg, p *Player, frame float64) *ControlMsg {
-	if msg != nil {
-		p.target = msg.target
-		p.pos = msg.pos
-	}
-	disX := p.target.X - p.pos.X
-	disY := p.target.Y - p.pos.Y
-	total := math.Sqrt(math.Pow(disX, 2) + math.Pow(disY, 2))
-	speed := 1 / frame * p.speed
-	per := speed / total
-	if per > 1.0 {
-		per = 1.0
-	}
-	speedX := per * disX
-	speedY := per * disY
-	p.destination.X = speedX
-	p.destination.Y = speedY
-	p.status = MOVING
-
-	p.pos.X += p.destination.X
-	p.pos.Y += p.destination.Y
-	// 会有误差
-	nextX := p.pos.X + p.destination.X
-	targetX := p.target.X - p.pos.X
-	nextTargetX := p.target.X - nextX
-	nextY := p.pos.Y + p.destination.Y
-	targetY := p.target.Y - p.pos.Y
-	nextTargetY := p.target.Y - nextY
-	if targetX == 0 && targetY == 0 {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
-	}
-	if (targetX > 0 && nextTargetX < 0) || (targetX < 0 && nextTargetX > 0) {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
-	}
-	if (targetY > 0 && nextTargetY < 0) || (targetY < 0 && nextTargetY > 0) {
-		p.pos.X = p.target.X
-		p.pos.Y = p.target.Y
-		p.status = STOP
-	}
-	res := &ControlMsg{
-		id:     p.id,
-		pos:    p.pos,
-		target: p.target,
-	}
-	return res
+	s.Msg = s.Msg[:0]
 }

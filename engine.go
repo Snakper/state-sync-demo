@@ -23,6 +23,18 @@ func NewGameEngine(main string) *Game {
 	}
 }
 
+func (g *Game) OpenForecast() {
+	for _, c := range g.clients {
+		c.SetForecast(true)
+	}
+}
+
+func (g *Game) OpenReconciliation() {
+	for _, c := range g.clients {
+		c.SetReconciliation(true)
+	}
+}
+
 func (g *Game) AddClient(c *Client) {
 	f, err := os.Open("img.png")
 	if err != nil {
@@ -34,17 +46,7 @@ func (g *Game) AddClient(c *Client) {
 	}
 	eimg := ebiten.NewImageFromImage(img)
 	c.player.image = eimg
-	g.clients[c.player.id] = c
-	g.clients[c.player.id].player = &Player{
-		id:          c.player.id,
-		speed:       c.player.speed,
-		pos:         c.player.pos,
-		status:      c.player.status,
-		destination: c.player.destination,
-		target:      c.player.target,
-		image:       c.player.image,
-		client:      c.player.client,
-	}
+	g.clients[c.player.id] = c.DeepCopyClient(c)
 }
 
 func (g *Game) Update() error {
@@ -58,8 +60,37 @@ func (g *Game) Update() error {
 			}
 			continue
 		}
-		res := ProcessOne(msg, c.player, 60)
-		c.player.pos = res.pos
+		// 开启预测，但未开启对账
+		if c.forecast && !c.reconciliation {
+			if msg != nil {
+				c.player.target = msg.target
+				c.player.pos = msg.pos
+			}
+			res := ProcessOne(c.player, 60)
+			c.player.pos = res.pos
+		}
+		// 预测及对账
+		if c.forecast && c.reconciliation {
+			if msg != nil && msg.index != 0 {
+				buf, ok := c.ControlBuffer[msg.index]
+				if ok {
+					// 对账失败，强制同步位置
+					if !(buf.target == msg.pos) {
+						c.player.pos = msg.pos
+						c.ControlBuffer = map[int]ControlMsg{}
+						continue
+					}
+					// 删除缓存
+					delete(c.ControlBuffer, msg.index)
+				}
+				// 缓存不存在，对账失败，强制同步位置
+				if !ok {
+					c.player.pos = msg.pos
+				}
+			}
+			res := ProcessOne(c.player, 60)
+			c.player.pos = res.pos
+		}
 	}
 	return nil
 }
@@ -72,10 +103,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		c, ok := g.clients[g.mainPlayer]
 		if ok {
 			p := c.player
-			pos := p.pos
-			pos.X = float64(x)
-			pos.Y = float64(y)
-			c.Move(pos)
+			target := p.pos
+			target.X = float64(x)
+			target.Y = float64(y)
+			p.target = target
+			c.Move(target)
 		}
 	}
 	// 渲染
