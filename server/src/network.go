@@ -23,7 +23,7 @@ func Listen() {
 	}()
 }
 
-func SendToNetwork(msg ControlMsg) {
+func SendToNetwork(msg []ControlMsg) {
 	b, err := json.Marshal(msg)
 	if err != nil {
 		panic(err)

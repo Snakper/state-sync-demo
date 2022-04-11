@@ -6,7 +6,7 @@ import (
 
 type Client struct {
 	player         *Player
-	playerChan     chan *ControlMsg
+	playerChan     chan []ControlMsg
 	forecast       bool
 	reconciliation bool
 	interpolation  bool
@@ -16,7 +16,7 @@ type Client struct {
 
 func NewClient() *Client {
 	client := &Client{
-		playerChan:    make(chan *ControlMsg, 100),
+		playerChan:    make(chan []ControlMsg, 100),
 		ControlBuffer: map[int]ControlMsg{},
 		index:         1,
 	}
@@ -62,11 +62,15 @@ func (c *Client) DeepCopyClient(cli *Client) *Client {
 	return client
 }
 
-func (c *Client) GetMessage() *ControlMsg {
+func (c *Client) GetMessage() []*ControlMsg {
 	for {
 		select {
 		case m := <-c.playerChan:
-			return m
+			ms := make([]*ControlMsg, 0)
+			for idx := range m {
+				ms = append(ms, &m[idx])
+			}
+			return ms
 		default:
 			return nil
 		}

@@ -58,12 +58,12 @@ func (g *Game) AddClient(c *Client) {
 func (g *Game) Update() error {
 	// 根据网络消息更新位置
 	for _, c := range g.clients {
-		msg := c.GetMessage()
+		msgs := c.GetMessage()
 		// 预测及对账只对本玩家生效
 		if c.player.Id == g.mainPlayer {
 			// 不开启预测，直接采用服务端位置
 			if !c.forecast {
-				if msg != nil {
+				for _, msg := range msgs {
 					c.player.Pos = msg.Pos
 					c.player.Target = msg.Target
 				}
@@ -71,7 +71,7 @@ func (g *Game) Update() error {
 			}
 			// 开启预测但未开启对账, 会强制同步服务端
 			if c.forecast && !c.reconciliation {
-				if msg != nil {
+				for _, msg := range msgs {
 					c.player.Target = msg.Target
 					c.player.Pos = msg.Pos
 				}
@@ -80,7 +80,10 @@ func (g *Game) Update() error {
 			}
 			// 预测及对账
 			if c.forecast && c.reconciliation {
-				if msg != nil && msg.Index != 0 {
+				for _, msg := range msgs {
+					if msg.Index == 0 {
+						continue
+					}
 					buf, ok := c.ControlBuffer[msg.Index]
 					if ok {
 						// 对账失败，强制同步位置
@@ -106,7 +109,7 @@ func (g *Game) Update() error {
 			if c.interpolation {
 				ProcessOne(c.player, ClientFrame)
 			} else {
-				if msg != nil {
+				for _, msg := range msgs {
 					c.player.Pos = msg.Pos
 				}
 			}

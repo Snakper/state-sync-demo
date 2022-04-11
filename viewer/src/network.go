@@ -20,13 +20,20 @@ func ConnectToServer() {
 			}
 			index := bytes.IndexByte(b, 0)
 			bb := b[:index]
-			m := &ControlMsg{}
-			err = json.Unmarshal(bb, m)
-			if err != nil {
-				panic(err)
-			}
 			lock.Lock()
-			msg = append(msg, m)
+			if len(msg) == 0 {
+				err = json.Unmarshal(bb, &msg)
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				m := make([]ControlMsg, 0)
+				err = json.Unmarshal(bb, &msg)
+				if err != nil {
+					panic(err)
+				}
+				msg = append(msg, m...)
+			}
 			lock.Unlock()
 		}
 	}()

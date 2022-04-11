@@ -8,12 +8,14 @@ import (
 
 type Server struct {
 	Msg     []*ControlMsg
+	tempMsg []ControlMsg
 	Clients map[string]*Client
 }
 
 func NewServer() *Server {
 	return &Server{
 		Msg:     []*ControlMsg{},
+		tempMsg: []ControlMsg{},
 		Clients: map[string]*Client{},
 	}
 }
@@ -29,11 +31,14 @@ func (s *Server) GetMessage() {
 	}
 }
 
-func (s *Server) sendToClient(c *Client, msg *ControlMsg) {
+func (s *Server) sendToClient(msg []ControlMsg) {
 	go func() {
 		time.Sleep(lag)
-		SendToNetwork(*msg)
-		c.playerChan <- msg
+		SendToNetwork(msg)
+		for _, cli := range s.Clients {
+			cli.playerChan <- msg
+		}
+		s.tempMsg = s.tempMsg[:0]
 	}()
 }
 
@@ -110,7 +115,7 @@ func (s *Server) process() {
 			p.Pos.Y = p.Target.Y
 			p.Status = STOP
 		}
-		msg := &ControlMsg{
+		msg := ControlMsg{
 			Id:     p.Id,
 			Pos:    p.Pos,
 			Target: p.Target,
@@ -119,9 +124,9 @@ func (s *Server) process() {
 		if buf, ok := clientMsg[p.Id]; ok {
 			msg.Index = buf.Index
 		}
-		s.sendToClient(c, msg)
+		s.tempMsg = append(s.tempMsg, msg)
 		fmt.Println("Server Player Move:", msg)
 	}
-
+	s.sendToClient(s.tempMsg)
 	s.Msg = s.Msg[:0]
 }

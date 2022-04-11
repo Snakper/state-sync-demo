@@ -16,7 +16,7 @@ var ClientFrame = float64(60)
 
 type Status int
 
-var msg = make([]*ControlMsg, 0)
+var msg = make([]ControlMsg, 0)
 var lock = &sync.Mutex{}
 
 const (
